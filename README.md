@@ -4,7 +4,7 @@ The Wisdom of Ubuntu: "I am because we are"
 
 In the spirit of Ubuntu, which emphasizes community and sharing, your task is to create a program that connects to the global community of the internet, respectfully fetches shared resources, and organizes them for later appreciation.
 
-Your Task
+### Your Task
 
 Create a Python script that:
 
@@ -18,7 +18,7 @@ Saves it to the Fetched_Images directory with an appropriate filename
 
 Handles errors gracefully, respecting that not all connections succeed
 
-Requirements
+### Requirements
 
 Use the requests library to fetch the image
 
@@ -30,7 +30,7 @@ Extract the filename from the URL or generate one if not available
 
 Save the image in binary mode
 
-Ubuntu Principles to Implement
+### Ubuntu Principles to Implement
 
 Community: Your program should connect to the wider web community
 
