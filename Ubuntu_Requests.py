@@ -17,12 +17,12 @@ def download_image():
         url = input("Please enter the image URL: ").strip()
         
         if not url:
-            print("❌ No URL provided. Please try again.")
+            print("No URL provided. Please try again.")
             return
         
         # Validate URL format
         if not url.startswith(('http://', 'https://')):
-            print("❌ Invalid URL format. Please include http:// or https://")
+            print(" Invalid URL format. Please include http:// or https://")
             return
         
         # Create directory if it doesn't exist
@@ -30,7 +30,7 @@ def download_image():
         print("✓ Fetched_Images directory ready")
         
         # Fetch the image
-        print(f"🌐 Connecting to {urlparse(url).netloc}...")
+        print(f"Connecting to {urlparse(url).netloc}...")
         response = requests.get(url, timeout=10)
         
         # Check for HTTP errors
@@ -39,7 +39,7 @@ def download_image():
         # Check if content is actually an image
         content_type = response.headers.get('content-type', '')
         if not content_type.startswith('image/'):
-            print("❌ The URL does not point to an image file")
+            print(" The URL does not point to an image file")
             return
         
         # Extract or generate filename
@@ -58,22 +58,22 @@ def download_image():
         with open(filepath, 'wb') as file:
             file.write(response.content)
         
-        print(f"✅ Successfully downloaded: {filename}")
-        print(f"📁 Saved to: {os.path.abspath(filepath)}")
-        print(f"📊 File size: {len(response.content):,} bytes")
+        print(f" Successfully downloaded: {filename}")
+        print(f"Saved to: {os.path.abspath(filepath)}")
+        print(f" File size: {len(response.content):,} bytes")
         
     except requests.exceptions.RequestException as e:
-        print(f"❌ Network error: {e}")
+        print(f"Network error: {e}")
     except requests.exceptions.HTTPError as e:
-        print(f"❌ HTTP error: {e}")
+        print(f"HTTP error: {e}")
     except requests.exceptions.Timeout:
-        print("❌ Connection timed out. Please try again.")
+        print(" Connection timed out. Please try again.")
     except requests.exceptions.TooManyRedirects:
-        print("❌ Too many redirects. The URL might be broken.")
+        print("Too many redirects. The URL might be broken.")
     except PermissionError:
-        print("❌ Permission denied. Cannot write to directory.")
+        print(" Permission denied. Cannot write to directory.")
     except Exception as e:
-        print(f"❌ An unexpected error occurred: {e}")
+        print(f"An unexpected error occurred: {e}")
 
 def extract_filename(url, content_type):
     """
@@ -105,7 +105,7 @@ def main():
     try:
         download_image()
     except KeyboardInterrupt:
-        print("\n\n👋 Operation cancelled by user. Stay connected!")
+        print("\n\n Operation cancelled by user. Stay connected!")
     finally:
         print("\n" + "=" * 50)
         print("Thank you for using Image Fetcher!")
