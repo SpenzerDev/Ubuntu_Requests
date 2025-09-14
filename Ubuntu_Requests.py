@@ -1,116 +1,114 @@
-import os
 import requests
-from urllib.parse import urlparse, unquote
-from pathlib import Path
-import datetime
+import os
+import hashlib
+from urllib.parse import urlparse
+import mimetypes
 
-def download_image():
-    """
-    Downloads an image from a URL and saves it to Fetched_Images directory
-    """
-    print("=== Image Fetcher ===")
-    print("Connect with the web community by fetching and organizing images")
-    print("-" * 50)
+def get_filename_from_url(url, content_type=None):
+    """Extract filename from URL or generate one based on content type"""
+    parsed_url = urlparse(url)
+    filename = os.path.basename(parsed_url.path)
     
+    if not filename or '.' not in filename:
+        # Generate filename based on content type or default to .jpg
+        extension = ".jpg"
+        if content_type:
+            extension = mimetypes.guess_extension(content_type) or ".jpg"
+        filename = f"downloaded_image{extension}"
+    
+    return filename
+
+def calculate_file_hash(content):
+    """Calculate MD5 hash of file content for duplicate detection"""
+    return hashlib.md5(content).hexdigest()
+
+def is_duplicate_image(directory, content):
+    """Check if image with same content already exists"""
+    content_hash = calculate_file_hash(content)
+    
+    for filename in os.listdir(directory):
+        filepath = os.path.join(directory, filename)
+        if os.path.isfile(filepath):
+            with open(filepath, 'rb') as f:
+                existing_hash = calculate_file_hash(f.read())
+                if existing_hash == content_hash:
+                    return True, filename
+    
+    return False, None
+
+def download_image(url, directory="Fetched_Images"):
+    """Download a single image from URL"""
     try:
-        # Prompt user for URL
-        url = input("Please enter the image URL: ").strip()
+        # Set headers to mimic a browser request
+        headers = {
+            'User-Agent': 'UbuntuImageFetcher/1.0 (https://example.com/image-fetcher)'
+        }
         
-        if not url:
-            print("No URL provided. Please try again.")
-            return
+        # Fetch the image with timeout and headers
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()  # Raise exception for bad status codes
         
-        # Validate URL format
-        if not url.startswith(('http://', 'https://')):
-            print(" Invalid URL format. Please include http:// or https://")
-            return
-        
-        # Create directory if it doesn't exist
-        os.makedirs("Fetched_Images", exist_ok=True)
-        print("✓ Fetched_Images directory ready")
-        
-        # Fetch the image
-        print(f"Connecting to {urlparse(url).netloc}...")
-        response = requests.get(url, timeout=10)
-        
-        # Check for HTTP errors
-        response.raise_for_status()
-        
-        # Check if content is actually an image
-        content_type = response.headers.get('content-type', '')
+        # Check content type to ensure it's an image
+        content_type = response.headers.get('Content-Type', '')
         if not content_type.startswith('image/'):
-            print(" The URL does not point to an image file")
-            return
+            return False, f"URL does not point to an image (Content-Type: {content_type})"
         
-        # Extract or generate filename
-        filename = extract_filename(url, content_type)
-        filepath = os.path.join("Fetched_Images", filename)
+        # Check content length to avoid excessively large files
+        content_length = response.headers.get('Content-Length')
+        if content_length and int(content_length) > 10 * 1024 * 1024:  # 10MB limit
+            return False, f"File too large ({int(content_length)/1024/1024:.2f} MB)"
         
-        # Check if file already exists
-        counter = 1
-        base_name, extension = os.path.splitext(filename)
-        while os.path.exists(filepath):
-            filename = f"{base_name}_{counter}{extension}"
-            filepath = os.path.join("Fetched_Images", filename)
-            counter += 1
+        # Extract filename from URL or generate one
+        filename = get_filename_from_url(url, content_type)
+        filepath = os.path.join(directory, filename)
+        
+        # Check for duplicates
+        is_duplicate, existing_filename = is_duplicate_image(directory, response.content)
+        if is_duplicate:
+            return False, f"Duplicate image already exists as {existing_filename}"
         
         # Save the image
-        with open(filepath, 'wb') as file:
-            file.write(response.content)
-        
-        print(f" Successfully downloaded: {filename}")
-        print(f"Saved to: {os.path.abspath(filepath)}")
-        print(f" File size: {len(response.content):,} bytes")
+        with open(filepath, 'wb') as f:
+            f.write(response.content)
+            
+        return True, f"Successfully fetched: {filename}"
         
     except requests.exceptions.RequestException as e:
-        print(f"Network error: {e}")
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP error: {e}")
-    except requests.exceptions.Timeout:
-        print(" Connection timed out. Please try again.")
-    except requests.exceptions.TooManyRedirects:
-        print("Too many redirects. The URL might be broken.")
-    except PermissionError:
-        print(" Permission denied. Cannot write to directory.")
+        return False, f"Connection error: {e}"
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-
-def extract_filename(url, content_type):
-    """
-    Extract filename from URL or generate one based on content type
-    """
-    # Try to get filename from URL path
-    parsed_url = urlparse(url)
-    path = unquote(parsed_url.path)
-    
-    if path and '/' in path:
-        # Extract the last part of the path
-        potential_filename = path.split('/')[-1]
-        if potential_filename and '.' in potential_filename:
-            return potential_filename
-    
-    # If no filename in URL, generate one based on content type
-    extension = content_type.split('/')[-1]
-    if extension == 'jpeg':
-        extension = 'jpg'
-    
-    # Generate timestamp-based filename
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    return f"image_{timestamp}.{extension}"
+        return False, f"An error occurred: {e}"
 
 def main():
-    """
-    Main function to run the image downloader
-    """
-    try:
-        download_image()
-    except KeyboardInterrupt:
-        print("\n\n Operation cancelled by user. Stay connected!")
-    finally:
-        print("\n" + "=" * 50)
-        print("Thank you for using Image Fetcher!")
-        print("Share your organized images with the community!")
-        print("=" * 50)
+    print("Welcome to the Ubuntu Image Fetcher")
+    print("A tool for mindfully collecting images from the web\n")
+    
+    # Create directory if it doesn't exist
+    os.makedirs("Fetched_Images", exist_ok=True)
+    
+    # Get URLs from user
+    urls_input = input("Please enter image URL(s), separated by commas: ")
+    urls = [url.strip() for url in urls_input.split(',') if url.strip()]
+    
+    if not urls:
+        print("No URLs provided.")
+        return
+    
+    successful_downloads = 0
+    
+    for url in urls:
+        print(f"\nProcessing: {url}")
+        success, message = download_image(url)
+        
+        if success:
+            print(f"✓ {message}")
+            successful_downloads += 1
+        else:
+            print(f"✗ {message}")
+    
+    print(f"\nDownloaded {successful_downloads} of {len(urls)} images.")
+    
+    if successful_downloads > 0:
+        print("Connection strengthened. Community enriched.")
 
 if __name__ == "__main__":
     main()
